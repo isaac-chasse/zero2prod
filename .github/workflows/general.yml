@@ -1,0 +1,93 @@
+# Name for your workflow
+name: Rust
+
+# Automatically triggers workflow
+on:
+  # This setting allows us to run CI against the specific branch `main`
+  # In your CI we may want to add checks for `dev` or `staging`
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [ opened, synchronize, reopened ]
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+# A workflow is made up of one or more "jobs" which run in parallel by default
+# Each job runs in a runner environment specified by "runs - on"
+jobs:
+
+  # Unique identifier for our job (`job_id`)
+  # The `test` container job
+  # Runs the cargo testing suite for errors
+  test:
+    # Sets name for the `Test` job that shows up in github CI
+    name: Test
+    # Containers must be run on linux based operating systems
+    runs-on: ubuntu-latest
+
+    steps:
+    
+    # Downloads most recent copy of our code from repository
+    - name: Check out repository code 
+      # The uses keyword specifies that this step will run v3 of the actions/checkout action. 
+      # This is an action that checks out your repository onto the runner, allowing you to run scripts or other actions against your code (such as build and test tools). 
+      # You should use the checkout action any time your workflow will run against the repository's code.
+      uses: actions/checkout@v3
+      
+    # This GitHub Action installs a Rust toolchain using rustup. It is designed for one-line concise usage and good defaults.
+    - name: Install the Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+    
+    # A GitHub Action that implements smart caching for rust/cargo projects with sensible defaults.
+    - name: Rust Cache Action
+      uses: Swatinem/rust-cache@v2
+      
+    # This GitHub Action runs our tests
+    - name: Run tests
+      run: cargo test
+      
+  # The `fmt` container job
+  # Runs rustfmt for formattng corrections, enforces standards
+  fmt: 
+    name: RustFmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # Specific to dtolnay/rust-toolchain: Comma-separated string of additional components to install
+          components: rustfmt
+      - name: Enforce formatting
+        run: cargo fmt --check
+        
+  # The `clippy` container job
+  # Runs clippy for linting 
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Linting
+        run: cargo clippy -- -D warnings
+        
+  # The `coverage` container job
+  # Checks for code coverage with external crate
+  # I might disable this since code coverage is not a perfect/great security measurement
+  coverage:
+    name: Code coverage
+    runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin
+      options: --security-opt seccomp=unconfined
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Generate code coverage
+        run: |
+          cargo tarpaulin --verbose --workspace
