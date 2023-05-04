@@ -22,7 +22,7 @@ async fn health_check_works() {
 
 fn spawn_app() {
     let server = zero2prod::run().expect("Failed to bind address.");
-    // launch as background task 
+    // launch as background task
     // tokio::spawn returns a handle to the spawned future
     // no use here so we have non-binding let
     let _ = tokio::spawn(server);
